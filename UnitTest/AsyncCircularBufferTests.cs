@@ -36,6 +36,8 @@ namespace UnitTest
       }
 
       Assert.IsFalse(buffer.IsFull);
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -52,6 +54,8 @@ namespace UnitTest
       buffer.DequeueAsync().GetAwaiter().GetResult();
 
       Assert.IsTrue(buffer.IsEmpty);
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -61,6 +65,8 @@ namespace UnitTest
 
       var buffer = new AsyncCircularBuffer<uint>(size);
       Assert.AreEqual(size, buffer.Size);
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -87,6 +93,8 @@ namespace UnitTest
       }
 
       Assert.AreEqual(0, buffer.Count);
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -105,6 +113,8 @@ namespace UnitTest
       buffer.DequeueAsync().GetAwaiter().GetResult();
 
       Assert.AreEqual(2, buffer.Count);
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -119,6 +129,8 @@ namespace UnitTest
 
       Assert.AreEqual(1u, buffer.DequeueAsync().Result);
       Assert.AreEqual(2u, buffer.DequeueAsync().Result);
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -156,6 +168,8 @@ namespace UnitTest
       task = buffer.DequeueAsync();
       Thread.Sleep(400);
       Assert.AreEqual(TaskStatus.WaitingForActivation, task.Status); // No more Items. Deque is awaited.
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -206,6 +220,8 @@ namespace UnitTest
       Task<uint> request = buffer.DequeueAsync();
       Thread.Sleep(400);
       Assert.AreEqual(TaskStatus.WaitingForActivation, request.Status); // No more Items. Deque is awaited.
+
+      buffer.Dispose();
     }
 
     //[TestMethod]
@@ -247,6 +263,8 @@ namespace UnitTest
 
       Assert.AreEqual(TaskStatus.RanToCompletion, task.Status);
       Assert.AreEqual(value, task.Result);
+
+      buffer.Dispose();
     }
 
     [TestMethod]
@@ -282,6 +300,8 @@ namespace UnitTest
         Assert.AreEqual(TaskStatus.RanToCompletion, request.Status);
         Assert.AreEqual(val, request.Result);
       }
+
+      buffer.Dispose();
     }
 
     //[TestMethod]

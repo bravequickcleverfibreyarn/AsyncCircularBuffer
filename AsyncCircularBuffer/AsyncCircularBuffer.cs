@@ -2,6 +2,7 @@
 using Software9119.Aid.Concurrency;
 
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -41,12 +42,14 @@ namespace Software9119.AsyncCircularBuffer
 
     public async Task<T> DequeueAsync()
     {
-      await process.WaitOneAsync();
+      await process.WaitOneAsync().ConfigureAwait(false);
 
       bool releaseWaiter;
       if (IsEmpty)
       {
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
         await ProcessOperationBlock();
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
         releaseWaiter = false;
       }
       else
@@ -65,12 +68,14 @@ namespace Software9119.AsyncCircularBuffer
 
     public async Task EnqueueAsync(T addee)
     {
-      await process.WaitOneAsync();
+      await process.WaitOneAsync().ConfigureAwait(false); ;
 
       bool releaseWaiter;
       if (IsFull)
       {
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
         await ProcessOperationBlock();
+#pragma warning restore CA2007 // Consider calling ConfigureAwait on the awaited task
         releaseWaiter = false;
       }
       else
@@ -85,12 +90,12 @@ namespace Software9119.AsyncCircularBuffer
     }
 
 
-    Task<bool> ProcessOperationBlock()
+    async Task<bool> ProcessOperationBlock()
     {
       Interlocked.Increment(ref waiterCount);
-      Task<bool> waiting = waiter.WaitOneAsync();
+      ConfiguredTaskAwaitable<bool> waiting = waiter.WaitOneAsync().ConfigureAwait(false);
       process.Set();
-      return waiting;
+      return await waiting;
     }
 
     void FinalizeQueueOperation(bool releaseWaiter)
