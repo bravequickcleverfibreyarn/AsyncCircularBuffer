@@ -1,1 +1,1 @@
-﻿
+﻿• allow cancellation after Aid update with Lockers WaitHandleExtensions

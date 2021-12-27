@@ -4,323 +4,222 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Software9119.AsyncCircularBuffer;
 
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace UnitTest
+namespace UnitTest;
+
+[TestClass]
+public class AsyncCircularBufferTests
 {
-  [TestClass]
-  public class AsyncCircularBufferTests
+
+  const TaskStatus
+    ranToCompletion       = TaskStatus.RanToCompletion,
+    waitingForActivation  = TaskStatus.WaitingForActivation;
+
+  [TestMethod]
+  async public Task IsFull_States_ExpectedBehavior ()
   {
-    [TestMethod]
-    public void IsFull_States_ExpectedBehavior()
-    {
-      var buffer = new AsyncCircularBuffer<uint>(5);
+    using AsyncCircularBuffer<uint> buffer = new (5);
 
-      Assert.IsFalse(buffer.IsFull);
+    Assert.IsFalse (buffer.IsFull);
 
-      const uint
-        inclusiveStart = 1u,
-        exclusiveEnd = 6u;
+    for (uint i = 1u; i < 6u; ++i)
+      await buffer.EnqueueAsync (i);
 
-      for (uint i = inclusiveStart; i < exclusiveEnd; ++i)
-      {
-        buffer.EnqueueAsync(i).GetAwaiter().GetResult();
-      }
+    Assert.IsTrue (buffer.IsFull);
 
-      Assert.IsTrue(buffer.IsFull);
+    _ = await buffer.DequeueAsync ();
 
-      for (uint i = inclusiveStart; i < exclusiveEnd; ++i)
-      {
-        buffer.DequeueAsync().GetAwaiter().GetResult();
-      }
+    Assert.IsFalse (buffer.IsFull);
+  }
 
-      Assert.IsFalse(buffer.IsFull);
+  [TestMethod]
+  async public Task IsEmpty_States_ExpectedBehavior ()
+  {
+    using AsyncCircularBuffer<uint> buffer = new (5);
 
-      buffer.Dispose();
-    }
+    Assert.IsTrue (buffer.IsEmpty);
 
-    [TestMethod]
-    public void IsEmpty_States_ExpectedBehavior()
-    {
-      var buffer = new AsyncCircularBuffer<uint>(5);
+    await buffer.EnqueueAsync (3u);
 
-      Assert.IsTrue(buffer.IsEmpty);
+    Assert.IsFalse (buffer.IsEmpty);
 
-      buffer.EnqueueAsync(3u).GetAwaiter().GetResult();
+    _ = await buffer.DequeueAsync ();
 
-      Assert.IsFalse(buffer.IsEmpty);
+    Assert.IsTrue (buffer.IsEmpty);
+  }
 
-      buffer.DequeueAsync().GetAwaiter().GetResult();
+  [TestMethod]
+  public void Size_SizeEquals ()
+  {
+    const int size = 5;
 
-      Assert.IsTrue(buffer.IsEmpty);
+    using AsyncCircularBuffer<uint> buffer = new (size);
+    Assert.AreEqual (size, buffer.Size);
+  }
 
-      buffer.Dispose();
-    }
+  [TestMethod]
+  async public Task Count_States_ExpectedBehavior ()
+  {
+    using AsyncCircularBuffer<int> buffer = new (5);
 
-    [TestMethod]
-    public void Size_SizeEquals()
-    {
-      int size = 5;
+    Assert.AreEqual (0, buffer.Count);
 
-      var buffer = new AsyncCircularBuffer<uint>(size);
-      Assert.AreEqual(size, buffer.Size);
-
-      buffer.Dispose();
-    }
-
-    [TestMethod]
-    public void Count_States_ExpectedBehavior()
-    {
-      var buffer = new AsyncCircularBuffer<int>(5);
-
-      Assert.AreEqual(0, buffer.Count);
-
-      const int
+    const int
         inclusiveStart = 1,
         exclusiveEnd = 6;
 
-      for (int i = inclusiveStart; i < exclusiveEnd; ++i)
-      {
-        buffer.EnqueueAsync(i).GetAwaiter().GetResult();
-        Assert.AreEqual(i, buffer.Count);
-      }
-
-      for (int i = inclusiveStart; i < exclusiveEnd; ++i)
-      {
-        buffer.DequeueAsync().GetAwaiter().GetResult();
-        Assert.AreEqual(5 - i, buffer.Count);
-      }
-
-      Assert.AreEqual(0, buffer.Count);
-
-      buffer.Dispose();
-    }
-
-    [TestMethod]
-    public void Count_SomeCount_CountEquals()
+    for (int i = inclusiveStart; i < exclusiveEnd; ++i)
     {
-      var buffer = new AsyncCircularBuffer<uint>(5);
-
-      for (uint i = 1u; i < 5u; ++i)
-      {
-        buffer.EnqueueAsync(i).GetAwaiter().GetResult();
-      }
-
-      Assert.AreEqual(4, buffer.Count);
-
-      buffer.DequeueAsync().GetAwaiter().GetResult();
-      buffer.DequeueAsync().GetAwaiter().GetResult();
-
-      Assert.AreEqual(2, buffer.Count);
-
-      buffer.Dispose();
+      await buffer.EnqueueAsync (i);
+      Assert.AreEqual (i, buffer.Count);
     }
 
-    [TestMethod]
-    public void EnqueAsyncDequeAsync_SomeItems_DequedAsExpected()
+    for (int i = inclusiveStart; i < exclusiveEnd; ++i)
     {
-      var buffer = new AsyncCircularBuffer<uint>(5);
-
-      for (uint i = 1u; i < 3u; ++i)
-      {
-        buffer.EnqueueAsync(i).GetAwaiter().GetResult();
-      }
-
-      Assert.AreEqual(1u, buffer.DequeueAsync().Result);
-      Assert.AreEqual(2u, buffer.DequeueAsync().Result);
-
-      buffer.Dispose();
+      _ = await buffer.DequeueAsync ();
+      Assert.AreEqual (5 - i, buffer.Count);
     }
+  }
 
-    [TestMethod]
-    public void EnqueAsync_FullQueue_NonBlockingResponseBehavior()
+  [TestMethod]
+  async public Task EnqueAsyncDequeAsync_SomeItems_DequedAsExpected ()
+  {
+    using AsyncCircularBuffer<uint> buffer = new (5);
+
+    for (uint i = 1u; i < 3u; ++i)
+      await buffer.EnqueueAsync (i);
+
+    Assert.AreEqual (1u, await buffer.DequeueAsync ());
+    Assert.AreEqual (2u, await buffer.DequeueAsync ());
+  }
+
+  [TestMethod]
+  async public Task EnqueAsync_FullQueue_NonBlockingResponseBehavior ()
+  {
+    using AsyncCircularBuffer<uint> buffer = new (5);
+
+    const uint awaitedTaskValue = 6u;
+
+    Task task = null;
+    for (uint i = 1u; i < 7u; ++i)
     {
-      var buffer = new AsyncCircularBuffer<uint>(5);
+      task = buffer.EnqueueAsync (i);
+      Thread.Sleep (400);
 
-      const uint awaitedTaskValue = 6u;
+      TaskStatus status = i == awaitedTaskValue
+            ? waitingForActivation
+            : ranToCompletion;
 
-      Task task = null;
-      for (uint i = 1u; i < 7u; ++i)
-      {
-        task = buffer.EnqueueAsync(i);
-        Thread.Sleep(400);
-
-        TaskStatus status = i == awaitedTaskValue
-            ? TaskStatus.WaitingForActivation
-            : TaskStatus.RanToCompletion;
-
-        Assert.AreEqual(status, task.Status);
-      }
-
-      Assert.AreEqual(1u, buffer.DequeueAsync().Result);
-
-      Thread.Sleep(300);
-      Assert.AreEqual(TaskStatus.RanToCompletion, task.Status); // Enque-blocked task should finished when it can.
-
-      Assert.AreEqual(2u, buffer.DequeueAsync().Result);
-      Assert.AreEqual(3u, buffer.DequeueAsync().Result);
-      Assert.AreEqual(4u, buffer.DequeueAsync().Result);
-      Assert.AreEqual(5u, buffer.DequeueAsync().Result);
-
-      Assert.AreEqual(6u, buffer.DequeueAsync().Result);
-
-      task = buffer.DequeueAsync();
-      Thread.Sleep(400);
-      Assert.AreEqual(TaskStatus.WaitingForActivation, task.Status); // No more Items. Deque is awaited.
-
-      buffer.Dispose();
+      Assert.AreEqual (status, task.Status);
     }
 
-    [TestMethod]
-    public void EnqueAsync_FullQueueMoreRequests_NonBlockingResponseBehavior()
+    Assert.AreEqual (1u, await buffer.DequeueAsync ());
+    Thread.Sleep (300);
+    Assert.AreEqual (ranToCompletion, task.Status); // Enque-blocked finishes when it can.
+
+    for (uint i = 2u; i < 7u; ++i)
+      Assert.AreEqual (i, await buffer.DequeueAsync ());
+
+    task = buffer.DequeueAsync ();
+    Thread.Sleep (400);
+    Assert.AreEqual (waitingForActivation, task.Status); // No more Items. Deque is awaited.
+  }
+
+  [TestMethod]
+  async public Task EnqueAsync_FullQueueMoreRequests_NonBlockingResponseBehavior ()
+  {
+    const uint
+        firstSet__inclusiveStart  = 1u,
+        firstSet__exclusiveEnd    = 6u;
+
+    using AsyncCircularBuffer<uint> buffer = new ((int)(firstSet__exclusiveEnd - firstSet__inclusiveStart));
+
+    for (uint i = firstSet__inclusiveStart; i < firstSet__exclusiveEnd; ++i)
+      await buffer.EnqueueAsync (i);
+
+    const uint
+        secondSet__inclusiveStart = firstSet__exclusiveEnd,
+        secondSet__exclusiveEnd   = 11u;
+
+    List<Task> enquedTasks = new ((int)(secondSet__exclusiveEnd - secondSet__inclusiveStart));
+
+    for (uint i = secondSet__inclusiveStart; i < secondSet__exclusiveEnd; ++i)
     {
-      var buffer = new AsyncCircularBuffer<uint>(5);
+      Task task = buffer.EnqueueAsync(i);
+      Thread.Sleep (400);
+      Assert.AreEqual (waitingForActivation, task.Status);
 
-      const uint
-        inclusiveStart = 1u,
-        exclusiveEnd = 6u;
-
-      for (uint i = inclusiveStart; i < exclusiveEnd; ++i)
-      {
-        buffer.EnqueueAsync(i).GetAwaiter().GetResult();
-      }
-
-      IReadOnlyList<Task> enquedTasks = new Task[]
-      {
-        GetRequest(6u),
-        GetRequest(7u),
-        GetRequest(8u),
-        GetRequest(9u),
-        GetRequest(10u),
-      };
-
-      Task GetRequest(uint val)
-      {
-        Task request = buffer.EnqueueAsync(val);
-        Thread.Sleep(400);
-        Assert.AreEqual(TaskStatus.WaitingForActivation, request.Status);
-
-        return request;
-      }
-
-      for (uint i = inclusiveStart; i < exclusiveEnd; ++i)
-      {
-        Assert.AreEqual(i, buffer.DequeueAsync().GetAwaiter().GetResult());
-        Thread.Sleep(100);
-
-        Assert.AreEqual(TaskStatus.RanToCompletion, enquedTasks[(int)i - 1].Status);
-      }
-
-      for (uint i = 6u; i < 11u; ++i)
-      {
-        Assert.AreEqual(i, buffer.DequeueAsync().GetAwaiter().GetResult());
-      }
-
-      Task<uint> request = buffer.DequeueAsync();
-      Thread.Sleep(400);
-      Assert.AreEqual(TaskStatus.WaitingForActivation, request.Status); // No more Items. Deque is awaited.
-
-      buffer.Dispose();
+      enquedTasks.Add (task);
     }
 
-    //[TestMethod]
-    //public void EnqueAsync_FullQueueWithTimeout_NonBlockingResponseTimedOut()
-    //{
-    //  var buffer = new AsyncCircularBuffer<DateTime>(5);
-
-    //  const uint
-    //    inclusiveStart = 1u,
-    //    exclusiveEnd = 6u;
-
-    //  for (uint i = inclusiveStart; i < exclusiveEnd; ++i)
-    //  {
-    //    buffer.EnqueueAsync(DateTime.Now).GetAwaiter().GetResult();
-    //  }
-
-    //  Task response = buffer.EnqueueAsync(DateTime.Now, 1_000);
-    //  Thread.Sleep(400);
-    //  Assert.AreEqual(TaskStatus.WaitingForActivation, response.Status);
-
-    //  response.ContinueWith
-    //  (
-    //    x => Assert.AreEqual(TaskStatus.RanToCompletion, x.Status)
-    //  );
-    //}
-
-    [TestMethod]
-    public void DequeAsync_EmptyQueue_NonBlockingResponseBehavior()
+    for (uint i = firstSet__inclusiveStart; i < firstSet__exclusiveEnd; ++i)
     {
-      var buffer = new AsyncCircularBuffer<uint>(5);
+      Assert.AreEqual (i, await buffer.DequeueAsync ());
+      Thread.Sleep (100);
 
-      Task<uint> task = buffer.DequeueAsync();
-      Thread.Sleep(400);
-      Assert.AreEqual(TaskStatus.WaitingForActivation, task.Status);
-
-      const uint value = 1u;
-      buffer.EnqueueAsync(value).GetAwaiter().GetResult();
-      Thread.Sleep(100);
-
-      Assert.AreEqual(TaskStatus.RanToCompletion, task.Status);
-      Assert.AreEqual(value, task.Result);
-
-      buffer.Dispose();
+      Assert.AreEqual (ranToCompletion, enquedTasks [(int) i - 1].Status);
     }
 
-    [TestMethod]
-    public void DequeAsync_EmptyQueueMoreRequests_NonBlockingResponse()
+    for (uint i = secondSet__inclusiveStart; i < secondSet__exclusiveEnd; ++i)
+      Assert.AreEqual (i, await buffer.DequeueAsync ());
+
+    Task<uint> request = buffer.DequeueAsync();
+    Thread.Sleep (400);
+    Assert.AreEqual (waitingForActivation, request.Status); // No more Items. Deque is awaited.    
+  }
+
+  [TestMethod]
+  async public Task DequeAsync_EmptyQueue_NonBlockingResponseBehavior ()
+  {
+    using AsyncCircularBuffer<uint> buffer = new (5);
+
+    Task<uint> task = buffer.DequeueAsync();
+    Thread.Sleep (400);
+    Assert.AreEqual (waitingForActivation, task.Status);
+
+    const uint value = 1u;
+    await buffer.EnqueueAsync (value);
+    Thread.Sleep (100);
+
+    Assert.AreEqual (ranToCompletion, task.Status);
+    Assert.AreEqual (value, task.Result);
+  }
+
+  [TestMethod]
+  async public Task DequeAsync_EmptyQueueMoreRequests_NonBlockingResponseBehavior ()
+  {
+    using AsyncCircularBuffer<int> buffer = new (5);
+
+    Task<int> dequeRequest1 = GetRequest();
+    Task<int> dequeRequest2 = GetRequest();
+    Task<int> dequeRequest3 = GetRequest();
+    Task<int> dequeRequest4 = GetRequest();
+
+    Task<int> GetRequest ()
     {
-      var buffer = new AsyncCircularBuffer<uint>(5);
+      Task<int> request = buffer.DequeueAsync();
+      Thread.Sleep (400);
+      Assert.AreEqual (waitingForActivation, request.Status);
 
-      Task<uint> dequeRequest1 = GetRequest();
-      Task<uint> dequeRequest2 = GetRequest();
-      Task<uint> dequeRequest3 = GetRequest();
-      Task<uint> dequeRequest4 = GetRequest();
-
-      Task<uint> GetRequest()
-      {
-        Task<uint> request = buffer.DequeueAsync();
-        Thread.Sleep(400);
-        Assert.AreEqual(TaskStatus.WaitingForActivation, request.Status);
-
-        return request;
-      }
-
-      AddValue(1u, dequeRequest1);
-      AddValue(2u, dequeRequest2);
-      AddValue(3u, dequeRequest3);
-      AddValue(4u, dequeRequest4);
-
-      void AddValue(uint val, Task<uint> request)
-      {
-        buffer.EnqueueAsync(val).GetAwaiter().GetResult();
-
-        Thread.Sleep(100);
-
-        Assert.AreEqual(TaskStatus.RanToCompletion, request.Status);
-        Assert.AreEqual(val, request.Result);
-      }
-
-      buffer.Dispose();
+      return request;
     }
 
-    //[TestMethod]
-    //public void DequeAsync_EmptyQueueWithTimeout_NonBlockingResponseTimedOut()
-    //{
-    //  var buffer = new AsyncCircularBuffer<string>(0);
-    //  Task<string> response = buffer.DequeueAsync(1_000);
-      
-    //  Thread.Sleep(400);
-    //  Assert.AreEqual(TaskStatus.WaitingForActivation, response.Status);
+    await AddValue (-1, dequeRequest1);
+    await AddValue (-2, dequeRequest2);
+    await AddValue (-3, dequeRequest3);
+    await AddValue (-4, dequeRequest4);
 
-    //  response.ContinueWith
-    //  (
-    //    x =>
-    //    {
-    //      Assert.AreEqual(TaskStatus.RanToCompletion, x.Status);
-    //      Assert.AreEqual(default(string), x.Result);
-    //    }
-    //  );
-    //}
+    async Task AddValue ( int val, Task<int> request )
+    {
+      await buffer.EnqueueAsync (val);
+
+      Thread.Sleep (100);
+
+      Assert.AreEqual (ranToCompletion, request.Status);
+      Assert.AreEqual (val, request.Result);
+    }
   }
 }

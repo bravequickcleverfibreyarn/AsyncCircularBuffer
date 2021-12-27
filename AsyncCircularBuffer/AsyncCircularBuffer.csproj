@@ -1,23 +1,38 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <RootNamespace>Software9119.AsyncCircularBuffer</RootNamespace>
-    <AssemblyName>Software9119.AsyncCircularBuffer</AssemblyName>
-    <Copyright>Verbal consent needed.</Copyright>
-    <PackageLicenseExpression></PackageLicenseExpression>
-    <Description>Non-extendable circular buffer exhibiting non-blocking thread behavior.</Description>
-    <Authors>Jirka Cepelka</Authors>
-    <Version>2.0.0</Version>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <IncludeSymbols>true</IncludeSymbols>    
-    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-  </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Software9119.Aid" Version="8.0.0" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>    
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>Jiri Cepelka</Authors>
+    <Company>Software9119</Company>
+    <Description>Non-extendable circular buffer exhibiting non-blocking thread behavior.</Description>
+    <Copyright>Verbal consent needed.</Copyright>
+    <RootNamespace>Software9119.AsyncCircularBuffer</RootNamespace>
+    <Version>3.0.0</Version>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <PackageId>Software9119.$(AssemblyName).$(Configuration)</PackageId>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <PackageId>Software9119.$(AssemblyName)</PackageId>
+  </PropertyGroup>
+
+  <Target Name="CopyPackage" AfterTargets="Pack">
+    <Copy SourceFiles="$(OutputPath)..\$(PackageId).$(PackageVersion).nupkg" DestinationFolder=".\..\packages\" />
+  </Target>
 
 </Project>

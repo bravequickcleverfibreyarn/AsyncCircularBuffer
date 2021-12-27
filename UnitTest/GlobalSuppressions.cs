@@ -5,4 +5,4 @@
 
 using System.Diagnostics.CodeAnalysis;
 
-[assembly: SuppressMessage("Style", "IDE0034:Simplify 'default' expression", Justification = "<Pending>", Scope = "member", Target = "~M:UnitTest.AsyncCircularBufferTests.DequeAsync_EmptyQueueWithTimeout_NonBlockingResponseTimedOut")]
+[assembly: SuppressMessage ("Reliability", "CA2007:Consider calling ConfigureAwait on the awaited task", Justification = "Intentional.", Scope = "type", Target = "~T:UnitTest.AsyncCircularBufferTests")]
