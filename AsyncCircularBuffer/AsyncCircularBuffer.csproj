@@ -18,17 +18,18 @@
     <Description>Non-extendable circular buffer exhibiting non-blocking thread behavior.</Description>
     <Copyright>Verbal consent needed.</Copyright>
     <RootNamespace>Software9119.AsyncCircularBuffer</RootNamespace>
-    <Version>3.0.0</Version>
-    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <AssemblyName>Software9119.AsyncCircularBuffer</AssemblyName>
+    <Version>3.0.1</Version>
+    <AssemblyVersion>3.0.1.0</AssemblyVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
-    <PackageId>Software9119.$(AssemblyName).$(Configuration)</PackageId>
+    <PackageId>$(AssemblyName).$(Configuration)</PackageId>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <PackageId>Software9119.$(AssemblyName)</PackageId>
+    <PackageId>$(AssemblyName)</PackageId>
   </PropertyGroup>
 
   <Target Name="CopyPackage" AfterTargets="Pack">
